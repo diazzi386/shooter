@@ -22,6 +22,8 @@ var Colors = {
     bluegrey: "#455A64"
 };
 
+// Color themes, spawn ammo, spawn targets, unlock weapons, time starts on first center
+
 var DEBUG = false;
 
 var Shooter = {
@@ -31,7 +33,13 @@ var Shooter = {
         Clock.init();
         Player.init();
         Bullets = [];
-        Targets = [];
+        Targets = [
+            {
+                x: 0,
+                y: 0,
+                size: 50
+            }
+        ];
         
         Shooter.loop();
     }, loop: function () {
@@ -48,6 +56,7 @@ var Stats = {
     reloads: 0,
     fired: 0,
     accuracy: 0,
+    targets: 0,
 };
 
 var Targets = [];
@@ -83,7 +92,9 @@ var Player = {
 
         var bullet_x = -1 * Player.position.x + Guns[GunsList[Player.gun]].spray * (Math.random() - 0.5);
         var bullet_y = -1 * Player.position.y + Guns[GunsList[Player.gun]].spray * (Math.random() - 0.5);
-        var bullet_a = Math.max(0, 1 - Math.sqrt(bullet_x * bullet_x + bullet_y * bullet_y)/50);
+        var delta_x = bullet_x - Targets[Targets.length - 1].x; 
+        var delta_y = bullet_y - Targets[Targets.length - 1].y; 
+        var bullet_a = Math.max(0, 1 - Math.sqrt(delta_x * delta_x + delta_y * delta_y)/Targets[Targets.length - 1].size);
 
         Bullets.push(
             {
@@ -93,6 +104,11 @@ var Player = {
                 size: Guns[GunsList[Player.gun]].size
             }
         );
+
+        /*
+        if (Bullets.length >= 100)
+            Bullets.shift();
+        */
 
         Player.magazine.bullets -= 1;
 
@@ -109,6 +125,18 @@ var Player = {
             Stats.score += 10;
         else if (bullet_a > 0)
             Stats.score += 5;
+
+        if (bullet_a > 0) {
+            Targets = [
+                {
+                    x: (Math.random() - 0.5) * 600,
+                    y: (Math.random() - 0.5) * 450,
+                    size: 30 + 40 * Math.random()
+                }
+            ];
+
+            Stats.targets += 1;
+        }
 
         if (Guns[GunsList[Player.gun]].fire == "auto" && Player.magazine.bullets > 0)
             Player.firing = window.setTimeout(Player.fire, Guns[GunsList[Player.gun]].rate);
@@ -240,35 +268,45 @@ var Render = {
 
         context.clearRect(0, 0, canvas.width, canvas.height);
 
-        context.fillStyle = Colors.red;
-        context.beginPath();
-        context.arc(300 - Player.position.x, 225 + Player.position.y, 50, 0, 2 * Math.PI);
-        context.fill();
+        context.fillStyle = Colors.blue;
+        context.fillRect(0, 0, canvas.width, canvas.height);
 
-        context.fillStyle = Colors.white;
-        context.beginPath();
-        context.arc(300 - Player.position.x, 225 + Player.position.y, 40, 0, 2 * Math.PI);
-        context.fill();
-
-        context.fillStyle = Colors.red;
-        context.beginPath();
-        context.arc(300 - Player.position.x, 225 + Player.position.y, 30, 0, 2 * Math.PI);
-        context.fill();
-
-        context.fillStyle = Colors.white;
-        context.beginPath();
-        context.arc(300 - Player.position.x, 225 + Player.position.y, 20, 0, 2 * Math.PI);
-        context.fill();
-
-        context.fillStyle = Colors.red;
-        context.beginPath();
-        context.arc(300 - Player.position.x, 225 + Player.position.y, 10, 0, 2 * Math.PI);
-        context.fill();
+        /*
+        context.fillStyle = Colors.green;
+        context.fillRect(0, 225 + Player.position.y, canvas.width, canvas.height);
+        */
 
         context.fillStyle = Colors.black;
         for (var i in Bullets) {
             context.beginPath();
             context.arc(300 - Bullets[i].x - Player.position.x, 225 + Bullets[i].y + Player.position.y, Bullets[i].size, 0, 2 * Math.PI);
+            context.fill();
+        }
+
+        for (var i in Targets) {
+            context.fillStyle = Colors.red;
+            context.beginPath();
+            context.arc(300 - Targets[i].x - Player.position.x, 225 + Targets[i].y + Player.position.y, Targets[i].size, 0, 2 * Math.PI);
+            context.fill();
+    
+            context.fillStyle = Colors.white;
+            context.beginPath();
+            context.arc(300 - Targets[i].x - Player.position.x, 225 + Targets[i].y + Player.position.y, Targets[i].size * 0.8, 0, 2 * Math.PI);
+            context.fill();
+    
+            context.fillStyle = Colors.red;
+            context.beginPath();
+            context.arc(300 - Targets[i].x - Player.position.x, 225 + Targets[i].y + Player.position.y, Targets[i].size * 0.6, 0, 2 * Math.PI);
+            context.fill();
+    
+            context.fillStyle = Colors.white;
+            context.beginPath();
+            context.arc(300 - Targets[i].x - Player.position.x, 225 + Targets[i].y + Player.position.y, Targets[i].size * 0.4, 0, 2 * Math.PI);
+            context.fill();
+    
+            context.fillStyle = Colors.red;
+            context.beginPath();
+            context.arc(300 - Targets[i].x - Player.position.x, 225 + Targets[i].y + Player.position.y, Targets[i].size * 0.2, 0, 2 * Math.PI);
             context.fill();
         }
 
@@ -287,12 +325,15 @@ var Render = {
         context.stroke();
         */
 
-       context.strokeStyle = Colors.amber;
-       context.lineWidth = 5;
-       context.textAlign = "left";
-       context.beginPath();
-       context.arc(300, 225, Math.max(0.5 * Guns[GunsList[Player.gun]].spray, 10), 0, 2 * Math.PI);
-       context.stroke();
+        context.textAlign = "left";
+
+        if (Player.magazine.bullets > 0) {
+            context.strokeStyle = Colors.amber;
+            context.lineWidth = 5;
+            context.beginPath();
+            context.arc(300, 225, Math.max(0.5 * Guns[GunsList[Player.gun]].spray, 10), 0, 2 * Math.PI);
+            context.stroke();
+        }
 
         context.fillStyle = Colors.white;
         context.font = "14px 'Press Start 2P'";
@@ -337,20 +378,28 @@ var Render = {
             context.fillText(Player.position.y, 200, 120);
 
             context.fillText("FIRED", 20, 140);
-            context.fillText(Bullets.length, 120, 140);
+            context.fillText(Bullets.length, 150, 140);
 
             context.fillText("RELOAD", 20, 160);
-            context.fillText(Stats.reloads, 120, 160);
+            context.fillText(Stats.reloads, 150, 160);
 
-            context.fillText("ACCURACY", 20, 180);
-            context.fillText((Stats.accuracy*100).toFixed() + "%", 150, 180);
+            context.fillText("TARGETS", 20, 180);
+            context.fillText(Stats.targets, 150, 180);
+
+            context.fillText("ACCURACY", 20, 200);
+            context.fillText((Stats.accuracy*100).toFixed() + "%", 150, 200);
+
+            
+            context.fillStyle = Colors.lightblue;
 
         }
 
         context.textAlign = "center";
         context.font = "20px 'Press Start 2P'";
-        if (Player.magazine.bullets == 0)
-            context.fillText("RELOAD", 300, 310);
+        if (Player.magazine.bullets == 0) {
+            context.fillText("RELOAD", 300, 235);
+            // context.fillText("RELOAD", 300, 310);
+        }
     }
 };
 
